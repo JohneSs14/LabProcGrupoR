@@ -1,0 +1,16 @@
+Considere o desafio de desenvolver um semáforo para controle de um cruzamento de trânsito (controle temporizado de LED RGB).
+
+Elabore o planejamento antes da aula a partir das indicações de leituras e uso de simuladores utilizando o template fornecido, considerando as seguintes atividades práticas a serem realizadas no laboratório:
+
+Instalar o Arduino IDE (https://docs.arduino.cc/software/ide/)
+Incluir o suporte ao ESP-32 da fabricante Espressif no Arduino IDE (vide um tutorial detalhado em https://randomnerdtutorials.com/getting-started-esp32-c3-super-mini/)
+Utilizar o exemplo Blink (File -> Example -> 01.Basics -> Blink) para fazer o led built-in da placa piscar com diversas frequências
+Exporte o binário (Sketch -> Export Compiled Binary) e localize o arquivo .elf (Sketch -> Show Sketch Folder)
+Use o Gemini ou outra IA Generativa para analisar o arquivo .elf e compare com o arquivo Blink.ino. Quais são as equivalentes em Assembly do pinMode e do digitalWrite? Ao executar o comando digitalWrite(LED_BUILTIN, HIGH), o led built-in apaga ou acende?
+Por enquanto, o semáforo apenas opera como um semáforo de atenção com a cor errada (comum em locais de entrada/saída de veículos). Faça o semáforo funcionar como amarelo piscante, e depois com a sequência verde (3 segundos) -> vermelho (4 segundos) -> amarelo (1 segundo) -> verde (3 segundos) -> etc.
+(Projeto) Levantamento de ideias/referências/inspirações para o projeto (sugestão de explorar GitHub, blogs, Pinterest e similares).
+Complemente o documento de planejamento para elaborar o relatório com máximo de 10 páginas em fonte Arial 12.
+
+Entregue o relatório (documentação completa) em formato PDF.
+
+O relatório deve ter referência para um link de repositório GitHub público com os códigos desenvolvidos.
