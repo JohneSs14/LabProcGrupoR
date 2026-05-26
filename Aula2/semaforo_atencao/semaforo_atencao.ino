@@ -1,14 +1,20 @@
-#define PIN_YELLOW 4
-#define DELAY_T    500   // ms por meio-ciclo (~1 s piscando)
+#ifndef RGB_BUILTIN
+#define RGB_BUILTIN 8
+#endif
+
+#define DELAY_T 500  // ms por meio-ciclo (~1 s piscando)
+
+void setColor(uint8_t r, uint8_t g, uint8_t b) {
+  neopixelWrite(RGB_BUILTIN, r, g, b);
+}
 
 void setup() {
-  pinMode(PIN_YELLOW, OUTPUT);
-  digitalWrite(PIN_YELLOW, LOW);
+  setColor(0, 0, 0);
 }
 
 void loop() {
-  digitalWrite(PIN_YELLOW, HIGH);
+  setColor(255, 180, 0);  // amarelo
   delay(DELAY_T);
-  digitalWrite(PIN_YELLOW, LOW);
+  setColor(0, 0, 0);      // apagado
   delay(DELAY_T);
 }
