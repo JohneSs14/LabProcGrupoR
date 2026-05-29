@@ -81,12 +81,11 @@ void loop() {
 
   uint8_t opB_internal = opB;
   if (op == '-') {
-    opB_internal = (~opB) & 0x0F;  // complemento de um
+    opB_internal = (~opB) & 0x0F;
   }
 
   uint16_t resultado = opA + opB_internal;
 
-  // end-around carry (complemento de um)
   if (resultado > 15) {
     resultado = (resultado & 0x0F) + 1;
   }
