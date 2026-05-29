@@ -1,10 +1,10 @@
 #include <Arduino.h>
 #include <WiFi.h>
 
-const char *ssid = "yourssid";
-const char *password = "yourpasswd";
+const char *ssid = "ESP32_ALU";
+const char *password = "12345678";  // MÍNIMO 8 caracteres
 
-NetworkServer server(80);
+WiFiServer server(80);
 
 const int LEDS[4] = {26, 27, 32, 33};
 
@@ -51,10 +51,17 @@ void setup() {
     pinMode(LEDS[i], OUTPUT);
   }
 
-  WiFi.begin(ssid, password);
+  WiFi.mode(WIFI_AP);
+  bool ok = WiFi.softAP(ssid, password);
 
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
+  if (ok) {
+    Serial.println("Access Point criado!");
+    Serial.print("SSID: ");
+    Serial.println(ssid);
+    Serial.print("IP do AP: ");
+    Serial.println(WiFi.softAPIP());  // normalmente 192.168.4.1
+  } else {
+    Serial.println("Falha ao criar o Access Point.");
   }
 
   server.begin();
@@ -62,7 +69,7 @@ void setup() {
 
 void loop() {
 
-  NetworkClient client = server.accept();
+  WiFiClient client = server.accept();
 
   if (client) {
 
