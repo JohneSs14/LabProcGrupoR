@@ -1,12 +1,12 @@
 #include <Arduino.h>
 #include <WiFi.h>
 
-const char *ssid = "ESP32_ALU";
-const char *password = "12345678";  // MÍNIMO 8 caracteres
+const char *ssid = "RedeSuperManeira";
+const char *password = "12345678";
 
 WiFiServer server(80);
 
-const int LEDS[4] = {26, 27, 32, 33};
+const int LEDS[4] = {4, 5, 6, 7};
 
 int binToSigned4bit(String bin) {
   int value = strtol(bin.c_str(), NULL, 2);
@@ -59,7 +59,7 @@ void setup() {
     Serial.print("SSID: ");
     Serial.println(ssid);
     Serial.print("IP do AP: ");
-    Serial.println(WiFi.softAPIP());  // normalmente 192.168.4.1
+    Serial.println(WiFi.softAPIP());
   } else {
     Serial.println("Falha ao criar o Access Point.");
   }
