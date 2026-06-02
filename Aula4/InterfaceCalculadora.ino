@@ -114,9 +114,14 @@ void loop() {
               String op = request.substring(startOp, endOp);
 
               if (op == "mul") {
-                resultado = (strtol(opAStr.c_str(), NULL, 2) & 0x0F) * (strtol(opBStr.c_str(), NULL, 2) & 0x0F);
+                  resultado = (strtol(opAStr.c_str(), NULL, 2) & 0x0F) * (strtol(opBStr.c_str(), NULL, 2) & 0x0F);
+              } else if (op == "fat") {
+                  resultado = 1;
+                  for (int i = 2; i <= opA; i++) {
+                      resultado *= i;
+                  }
               } else {
-                resultado = (op == "sum") ? (opA + opB) : (opA - opB);
+                  resultado = (op == "sum") ? (opA + opB) : (opA - opB);
               }
 
               bool overflow = false;
@@ -206,6 +211,7 @@ void loop() {
               client.println("<option value=\"sum\">Sum (Add)</option>");
               client.println("<option value=\"sub\">Sub (Subtract)</option>");
               client.println("<option value=\"mul\">Mul (Multiply)</option>");
+              client.println("<option value=\"fat\">Fat (Factorial)</option>");
               client.println("</select>");
 
               client.println("<br><br>");
