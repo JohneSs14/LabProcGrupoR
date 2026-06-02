@@ -6,35 +6,21 @@ const char *password = "12345678";
 
 WiFiServer server(80);
 
-int binToSigned4bit(String bin) {
-  int value = strtol(bin.c_str(), NULL, 2);
-
-  if (value & 0b1000) {
-    value = value - 16;
-  }
-
-  return value;
+unsigned long long binToDecimal(String bin) {
+  return strtoull(bin.c_str(), NULL, 2);
 }
 
 String toBinary(unsigned long long value) {
+
   if (value == 0) {
     return "0";
   }
 
   String result = "";
 
-  bool started = false;
-
-  for (int i = 63; i >= 0; i--) {
-    bool bit = (value >> i) & 1;
-
-    if (bit) {
-      started = true;
-    }
-
-    if (started) {
-      result += bit ? '1' : '0';
-    }
+  while (value > 0) {
+    result = String(value % 2) + result;
+    value /= 2;
   }
 
   return result;
@@ -75,7 +61,6 @@ void loop() {
       if (client.available()) {
 
         char c = client.read();
-
         request += c;
 
         if (c == '\n') {
@@ -96,13 +81,13 @@ void loop() {
               int endA = request.indexOf("&", startA);
 
               String opAStr = request.substring(startA, endA);
-              int opA = binToSigned4bit(opAStr);
+              unsigned long long opA = binToDecimal(opAStr);
 
               int startB = request.indexOf("opB=") + 4;
               int endB = request.indexOf("&", startB);
 
               String opBStr = request.substring(startB, endB);
-              int opB = binToSigned4bit(opBStr);
+              unsigned long long opB = binToDecimal(opBStr);
 
               int startOp = request.indexOf("operation=") + 10;
               int endOp = request.indexOf(" ", startOp);
@@ -116,16 +101,18 @@ void loop() {
 
               else if (op == "sub") {
 
-                resultado = opA - opB;
+                if (opA >= opB) {
+                  resultado = opA - opB;
+                } else {
+                  resultado = 0;
+                }
               }
 
               else if (op == "mul") {
 
                 unsigned long tInicio = micros();
 
-                resultado =
-                  (strtol(opAStr.c_str(), NULL, 2) & 0x0F) *
-                  (strtol(opBStr.c_str(), NULL, 2) & 0x0F);
+                resultado = opA * opB;
 
                 tempoExecucao = micros() - tInicio;
 
@@ -134,42 +121,36 @@ void loop() {
                 Serial.println(" us");
               }
 
-              else if (op == "fat") {
+              else if (op == "div") {
 
-                int n = strtol(opAStr.c_str(), NULL, 2) & 0x0F;
+                unsigned long tInicio = micros();
+
+                if (opB == 0) {
+                  divisaoPorZero = true;
+                } else {
+                  resultado = opA / opB;
+                }
+
+                tempoExecucao = micros() - tInicio;
+
+                Serial.print("Tempo div: ");
+                Serial.print(tempoExecucao);
+                Serial.println(" us");
+              }
+
+              else if (op == "fat") {
 
                 unsigned long tInicio = micros();
 
                 resultado = 1;
 
-                for (int i = 2; i <= n; i++) {
+                for (unsigned long long i = 2; i <= opA; i++) {
                   resultado *= i;
                 }
 
                 tempoExecucao = micros() - tInicio;
 
                 Serial.print("Tempo fat: ");
-                Serial.print(tempoExecucao);
-                Serial.println(" us");
-              }
-
-              else if (op == "div") {
-
-                int ua = strtol(opAStr.c_str(), NULL, 2) & 0x0F;
-                int ub = strtol(opBStr.c_str(), NULL, 2) & 0x0F;
-
-                unsigned long tInicio = micros();
-
-                if (ub == 0) {
-                  divisaoPorZero = true;
-                  resultado = 0;
-                } else {
-                  resultado = ua / ub;
-                }
-
-                tempoExecucao = micros() - tInicio;
-
-                Serial.print("Tempo div: ");
                 Serial.print(tempoExecucao);
                 Serial.println(" us");
               }
@@ -189,8 +170,11 @@ void loop() {
               client.println("</p>");
 
               if (divisaoPorZero) {
+
                 client.println("<p><b>Erro: divisao por zero.</b></p>");
+
               } else {
+
                 client.print("<p><b>Resultado decimal:</b> ");
                 client.print(resultado);
                 client.println("</p>");
@@ -200,7 +184,7 @@ void loop() {
                 client.println("</p>");
               }
 
-              if (op == "mul" || op == "fat" || op == "div") {
+              if (op == "mul" || op == "div" || op == "fat") {
 
                 client.print("<p><b>Tempo de execucao:</b> ");
                 client.print(tempoExecucao);
@@ -224,17 +208,17 @@ void loop() {
               client.println("</head>");
               client.println("<body>");
 
-              client.println("<h1>ESP32 ALU - Desafio Divisao</h1>");
+              client.println("<h1>ESP32 ALU</h1>");
 
               client.println("<form action=\"/calculate\" method=\"GET\">");
 
-              client.println("<label for=\"opA\">Operando A (4 bits):</label><br>");
-              client.println("<input type=\"text\" id=\"opA\" name=\"opA\" pattern=\"[01]{4}\" maxlength=\"4\" required>");
+              client.println("<label for=\"opA\">Operando A (binario):</label><br>");
+              client.println("<input type=\"text\" id=\"opA\" name=\"opA\" pattern=\"[01]+\" required>");
 
               client.println("<br><br>");
 
-              client.println("<label for=\"opB\">Operando B (4 bits):</label><br>");
-              client.println("<input type=\"text\" id=\"opB\" name=\"opB\" pattern=\"[01]{4}\" maxlength=\"4\" required>");
+              client.println("<label for=\"opB\">Operando B (binario):</label><br>");
+              client.println("<input type=\"text\" id=\"opB\" name=\"opB\" pattern=\"[01]+\" required>");
 
               client.println("<br><br>");
 
@@ -244,8 +228,8 @@ void loop() {
               client.println("<option value=\"sum\">sum</option>");
               client.println("<option value=\"sub\">sub</option>");
               client.println("<option value=\"mul\">mul</option>");
-              client.println("<option value=\"fat\">fat</option>");
               client.println("<option value=\"div\">div</option>");
+              client.println("<option value=\"fat\">fat</option>");
               client.println("</select>");
 
               client.println("<br><br>");
@@ -255,7 +239,8 @@ void loop() {
               client.println("</form>");
 
               client.println("<p><b>fat</b> utiliza apenas o Operando A.</p>");
-              client.println("<p><b>div</b> utiliza A e B (unsigned). Sem overflow.</p>");
+              client.println("<p><b>div</b> realiza divisao inteira.</p>");
+              client.println("<p>Entradas binarias de ate 64 bits.</p>");
 
               client.println("</body>");
               client.println("</html>");
@@ -266,13 +251,11 @@ void loop() {
           }
 
           else {
-
             currentLine = "";
           }
         }
 
         else if (c != '\r') {
-
           currentLine += c;
         }
       }
