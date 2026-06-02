@@ -115,7 +115,13 @@ void loop() {
 
               if (op == "mul") {
 
+                unsigned long tInicio = micros();
                 resultado = (strtol(opAStr.c_str(), NULL, 2) & 0x0F) * (strtol(opBStr.c_str(), NULL, 2) & 0x0F);
+                unsigned long tempoMul = micros() - tInicio;
+
+                Serial.print("Tempo multiplicacao: ");
+                Serial.print(tempoMul);
+                Serial.println(" us");
 
                 bool overflow = false;
 
