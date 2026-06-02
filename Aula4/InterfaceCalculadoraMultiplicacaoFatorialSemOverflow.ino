@@ -6,35 +6,21 @@ const char *password = "12345678";
 
 WiFiServer server(80);
 
-int binToSigned4bit(String bin) {
-  int value = strtol(bin.c_str(), NULL, 2);
-
-  if (value & 0b1000) {
-    value = value - 16;
-  }
-
-  return value;
+unsigned long long binToDecimal(String bin) {
+  return strtoull(bin.c_str(), NULL, 2);
 }
 
 String toBinary(unsigned long long value) {
+
   if (value == 0) {
     return "0";
   }
 
   String result = "";
 
-  bool started = false;
-
-  for (int i = 63; i >= 0; i--) {
-    bool bit = (value >> i) & 1;
-
-    if (bit) {
-      started = true;
-    }
-
-    if (started) {
-      result += bit ? '1' : '0';
-    }
+  while (value > 0) {
+    result = String(value % 2) + result;
+    value /= 2;
   }
 
   return result;
@@ -54,7 +40,8 @@ void setup() {
     Serial.println(ssid);
     Serial.print("IP do AP: ");
     Serial.println(WiFi.softAPIP());
-  } else {
+  }
+  else {
     Serial.println("Falha ao criar o Access Point.");
   }
 
@@ -95,13 +82,13 @@ void loop() {
               int endA = request.indexOf("&", startA);
 
               String opAStr = request.substring(startA, endA);
-              int opA = binToSigned4bit(opAStr);
+              unsigned long long opA = binToDecimal(opAStr);
 
               int startB = request.indexOf("opB=") + 4;
               int endB = request.indexOf("&", startB);
 
               String opBStr = request.substring(startB, endB);
-              int opB = binToSigned4bit(opBStr);
+              unsigned long long opB = binToDecimal(opBStr);
 
               int startOp = request.indexOf("operation=") + 10;
               int endOp = request.indexOf(" ", startOp);
@@ -115,16 +102,18 @@ void loop() {
 
               else if (op == "sub") {
 
-                resultado = opA - opB;
+                if (opA >= opB) {
+                  resultado = opA - opB;
+                } else {
+                  resultado = 0;
+                }
               }
 
               else if (op == "mul") {
 
                 unsigned long tInicio = micros();
 
-                resultado =
-                  (strtol(opAStr.c_str(), NULL, 2) & 0x0F) *
-                  (strtol(opBStr.c_str(), NULL, 2) & 0x0F);
+                resultado = opA * opB;
 
                 tempoExecucao = micros() - tInicio;
 
@@ -135,13 +124,11 @@ void loop() {
 
               else if (op == "fat") {
 
-                int n = strtol(opAStr.c_str(), NULL, 2) & 0x0F;
-
                 unsigned long tInicio = micros();
 
                 resultado = 1;
 
-                for (int i = 2; i <= n; i++) {
+                for (unsigned long long i = 2; i <= opA; i++) {
                   resultado *= i;
                 }
 
@@ -202,13 +189,13 @@ void loop() {
 
               client.println("<form action=\"/calculate\" method=\"GET\">");
 
-              client.println("<label for=\"opA\">Operando A (4 bits):</label><br>");
-              client.println("<input type=\"text\" id=\"opA\" name=\"opA\" pattern=\"[01]{4}\" maxlength=\"4\" required>");
+              client.println("<label for=\"opA\">Operando A (binario):</label><br>");
+              client.println("<input type=\"text\" id=\"opA\" name=\"opA\" pattern=\"[01]+\" required>");
 
               client.println("<br><br>");
 
-              client.println("<label for=\"opB\">Operando B (4 bits):</label><br>");
-              client.println("<input type=\"text\" id=\"opB\" name=\"opB\" pattern=\"[01]{4}\" maxlength=\"4\" required>");
+              client.println("<label for=\"opB\">Operando B (binario):</label><br>");
+              client.println("<input type=\"text\" id=\"opB\" name=\"opB\" pattern=\"[01]+\" required>");
 
               client.println("<br><br>");
 
@@ -236,15 +223,11 @@ void loop() {
             client.println();
             break;
           }
-
           else {
-
             currentLine = "";
           }
         }
-
         else if (c != '\r') {
-
           currentLine += c;
         }
       }
