@@ -31,6 +31,13 @@ String signedToBinary4bit(int value) {
   return result;
 }
 
+// Multiplicacao unsigned 4x4 implementada em C no ESP32 (nao no JavaScript).
+int multiply4bit(int a, int b) {
+  a = a & 0x0F;
+  b = b & 0x0F;
+  return a * b;
+}
+
 void showResultOnLEDs(int value) {
 
   value = value & 0x0F;
@@ -113,33 +120,11 @@ void loop() {
 
               String op = request.substring(startOp, endOp);
 
-              resultado = (op == "sum") ? (opA + opB) : (opA - opB);
+              if (op == "mul") {
 
-              bool overflow = false;
-
-              if (resultado > 7 || resultado < -8) {
-                overflow = true;
-              }
-
-              if (overflow) {
-
-                client.println("<!DOCTYPE html>");
-                client.println("<html>");
-
-                client.println("<head>");
-                client.println("<title>Overflow</title>");
-                client.println("</head>");
-
-                client.println("<body>");
-
-                client.println("<h1>OVERFLOW DETECTADO</h1>");
-                client.println("<p>O resultado nao cabe em 4 bits signed.</p>");
-
-                client.println("</body>");
-                client.println("</html>");
-              }
-
-              else {
+                int ua = strtol(opAStr.c_str(), NULL, 2) & 0x0F;
+                int ub = strtol(opBStr.c_str(), NULL, 2) & 0x0F;
+                resultado = multiply4bit(ua, ub);
 
                 showResultOnLEDs(resultado);
 
@@ -156,16 +141,78 @@ void loop() {
 
                 client.println("<h1>Resultado da ALU</h1>");
 
-                client.print("<p>Resultado decimal: ");
+                client.print("<p>Produto completo: ");
                 client.print(resultado);
                 client.println("</p>");
 
-                client.print("<p>Resultado binario: ");
+                client.print("<p>Bits baixos nos 4 LEDs: ");
                 client.print(resultadoBin);
                 client.println("</p>");
 
+                if (resultado > 15) {
+                  client.println("<p><b>OVERFLOW: produto maior que 15 (nao cabe em 4 bits).</b></p>");
+                }
+
                 client.println("</body>");
                 client.println("</html>");
+              }
+
+              else {
+
+                resultado = (op == "sum") ? (opA + opB) : (opA - opB);
+
+                bool overflow = false;
+
+                if (resultado > 7 || resultado < -8) {
+                  overflow = true;
+                }
+
+                if (overflow) {
+
+                  client.println("<!DOCTYPE html>");
+                  client.println("<html>");
+
+                  client.println("<head>");
+                  client.println("<title>Overflow</title>");
+                  client.println("</head>");
+
+                  client.println("<body>");
+
+                  client.println("<h1>OVERFLOW DETECTADO</h1>");
+                  client.println("<p>O resultado nao cabe em 4 bits signed.</p>");
+
+                  client.println("</body>");
+                  client.println("</html>");
+                }
+
+                else {
+
+                  showResultOnLEDs(resultado);
+
+                  String resultadoBin = signedToBinary4bit(resultado);
+
+                  client.println("<!DOCTYPE html>");
+                  client.println("<html>");
+
+                  client.println("<head>");
+                  client.println("<title>Resultado</title>");
+                  client.println("</head>");
+
+                  client.println("<body>");
+
+                  client.println("<h1>Resultado da ALU</h1>");
+
+                  client.print("<p>Resultado decimal: ");
+                  client.print(resultado);
+                  client.println("</p>");
+
+                  client.print("<p>Resultado binario: ");
+                  client.print(resultadoBin);
+                  client.println("</p>");
+
+                  client.println("</body>");
+                  client.println("</html>");
+                }
               }
             }
 
@@ -197,6 +244,7 @@ void loop() {
               client.println("<select id=\"operation\" name=\"operation\" required>");
               client.println("<option value=\"sum\">Sum (Add)</option>");
               client.println("<option value=\"sub\">Sub (Subtract)</option>");
+              client.println("<option value=\"mul\">Mul (Multiply)</option>");
               client.println("</select>");
 
               client.println("<br><br>");
