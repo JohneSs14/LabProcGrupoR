@@ -2,7 +2,7 @@
 
 const int SERVO_PIN = 5;
 const int SERVO_FREQ = 50;
-const int SERVO_RES = 14; // ESP32-C3: LEDC aceita no maximo 14 bits (nao 16)
+const int SERVO_RES = 14; 
 
 uint32_t anguloParaDuty(int angulo) {
   int pulsoUs = map(angulo, 0, 180, 500, 2500);
