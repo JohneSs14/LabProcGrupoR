@@ -1,8 +1,6 @@
 #include <Arduino.h>
 #include <WiFi.h>
 
-// Etapa D: controle do servomotor pela interface web (independente do LED/PWM).
-
 const char *ssid = "RedeSuperManeira";
 const char *password = "12345678";
 
@@ -20,42 +18,23 @@ uint32_t anguloParaDuty(int angulo) {
 }
 
 void moverServo(int angulo) {
+
   if (angulo < 0) angulo = 0;
   if (angulo > 180) angulo = 180;
 
-  anguloAtual = angulo;
   ledcWrite(SERVO_PIN, anguloParaDuty(angulo));
-
-  Serial.print("Servo angulo=");
-  Serial.println(anguloAtual);
 }
 
 void setup() {
 
-  Serial.begin(115200);
-
-  if (!ledcAttach(SERVO_PIN, SERVO_FREQ, SERVO_RES)) {
-    Serial.println("ERRO: ledcAttach falhou. Confira GPIO e resolucao.");
-  } else {
-    Serial.println("InterfacePWMServo iniciada");
-  }
-
-  moverServo(90);
+  ledcAttach(SERVO_PIN, SERVO_FREQ, SERVO_RES);
 
   WiFi.mode(WIFI_AP);
-  bool ok = WiFi.softAP(ssid, password);
-
-  if (ok) {
-    Serial.println("Access Point criado!");
-    Serial.print("SSID: ");
-    Serial.println(ssid);
-    Serial.print("IP do AP: ");
-    Serial.println(WiFi.softAPIP());
-  } else {
-    Serial.println("Falha ao criar o Access Point.");
-  }
+  WiFi.softAP(ssid, password);
 
   server.begin();
+
+  moverServo(anguloAtual);
 }
 
 void loop() {
@@ -83,61 +62,54 @@ void loop() {
             client.println("Content-type:text/html");
             client.println();
 
-            if (request.indexOf("GET /servo?") >= 0) {
+            if (request.indexOf("GET /setServo?") >= 0) {
 
-              int startAng = request.indexOf("ang=") + 4;
-              int endAng = request.indexOf(" ", startAng);
-              int angulo = request.substring(startAng, endAng).toInt();
+              int start = request.indexOf("value=") + 6;
+              int end = request.indexOf(" ", start);
 
-              moverServo(angulo);
+              String valueStr = request.substring(start, end);
 
-              client.println("<!DOCTYPE html>");
-              client.println("<html>");
-              client.println("<head>");
-              client.println("<title>Servo</title>");
-              client.println("</head>");
-              client.println("<body>");
+              anguloAtual = valueStr.toInt();
 
-              client.println("<h1>Servo posicionado</h1>");
+              if (anguloAtual < 0) anguloAtual = 0;
+              if (anguloAtual > 180) anguloAtual = 180;
 
-              client.print("<p>Angulo: ");
-              client.print(anguloAtual);
-              client.println(" graus</p>");
-
-              client.println("<br>");
-              client.println("<a href=\"/\">Voltar</a>");
-
-              client.println("</body>");
-              client.println("</html>");
+              moverServo(anguloAtual);
             }
 
-            else {
+            client.println("<!DOCTYPE html>");
+            client.println("<html>");
 
-              client.println("<!DOCTYPE html>");
-              client.println("<html>");
-              client.println("<head>");
-              client.println("<title>ESP32 Servo</title>");
-              client.println("</head>");
-              client.println("<body>");
+            client.println("<head>");
+            client.println("<title>Controle de Servomotor</title>");
+            client.println("</head>");
 
-              client.println("<h1>Controle Servomotor - GPIO 5</h1>");
+            client.println("<body>");
 
-              client.println("<form action=\"/servo\" method=\"GET\">");
+            client.println("<h1>Controle de Posicao do Servomotor</h1>");
 
-              client.println("<label for=\"ang\">Angulo (0-180):</label>");
-              client.print("<input type=\"number\" id=\"ang\" name=\"ang\" min=\"0\" max=\"180\" value=\"");
-              client.print(anguloAtual);
-              client.println("\" required>");
+            client.println("<form action=\"/setServo\" method=\"GET\">");
 
-              client.println("<br><br>");
+            client.print("<p>Angulo Atual: ");
+            client.print(anguloAtual);
+            client.println(" graus</p>");
 
-              client.println("<input type=\"submit\" value=\"Mover servo\">");
+            client.print("<input type=\"range\" ");
+            client.print("name=\"value\" ");
+            client.print("min=\"0\" ");
+            client.print("max=\"180\" ");
+            client.print("value=\"");
+            client.print(anguloAtual);
+            client.println("\">");
 
-              client.println("</form>");
+            client.println("<br><br>");
 
-              client.println("</body>");
-              client.println("</html>");
-            }
+            client.println("<input type=\"submit\" value=\"Mover Servo\">");
+
+            client.println("</form>");
+
+            client.println("</body>");
+            client.println("</html>");
 
             client.println();
 
