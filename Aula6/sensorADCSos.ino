@@ -98,8 +98,8 @@ void setup() {
   instantePisca = millis();
   apagaLed();
 
-  pinMode(SOS_PIN, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(SOS_PIN), onSos, FALLING);
+  pinMode(SOS_PIN, INPUT);
+  attachInterrupt(digitalPinToInterrupt(SOS_PIN), onSos, RISING);
 
   WiFi.mode(WIFI_AP);
 
