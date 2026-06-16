@@ -7,12 +7,9 @@ const char *password = "12345678";
 WiFiServer server(80);
 
 const int analogPin = 0;
+const int builtin = 8;
 
-#ifndef RGB_BUILTIN
-#define RGB_BUILTIN 8
-#endif
-
-const int LIMIAR_BAIXA_LUZ = 1500;
+const int LIMIAR_BAIXA_LUZ = 3000;
 const unsigned long INTERVALO_PISCA_MS = 2000;
 
 bool baixaLuminosidade = false;
@@ -20,11 +17,11 @@ bool ledAmareloLigado = false;
 unsigned long instantePisca = 0;
 
 void apagaLed() {
-  neopixelWrite(RGB_BUILTIN, 0, 0, 0);
+  neopixelWrite(builtin, 0, 0, 0);
 }
 
 void acendeAmarelo() {
-  neopixelWrite(RGB_BUILTIN, 255, 180, 0);
+  neopixelWrite(builtin, 255, 180, 0);
 }
 
 void setup() {
@@ -51,7 +48,7 @@ void loop() {
 
   int sensorValue = analogRead(analogPin);
 
-  baixaLuminosidade = sensorValue < LIMIAR_BAIXA_LUZ;
+  baixaLuminosidade = sensorValue > LIMIAR_BAIXA_LUZ;
 
   Serial.print(sensorValue);
   Serial.print(" | Baixa luz=");
