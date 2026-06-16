@@ -13,6 +13,7 @@ const int SOS_PIN = 3;
 const int LIMIAR_BAIXA_LUZ = 3000;
 const unsigned long INTERVALO_PISCA_MS = 2000;
 const unsigned long DEBOUNCE_MS = 50;
+const unsigned long TEMPO_ALERTA_SOS = 3000;
 
 bool baixaLuminosidade = false;
 bool ledAmareloLigado = false;
@@ -22,12 +23,19 @@ bool estadoEstavelSOS = LOW;
 bool ultimaLeituraSOS = LOW;
 unsigned long ultimoTempoMudancaSOS = 0;
 
+bool alertaSOS = false;
+unsigned long inicioAlertaSOS = 0;
+
 void apagaLed() {
   neopixelWrite(builtin, 0, 0, 0);
 }
 
 void acendeAmarelo() {
   neopixelWrite(builtin, 255, 180, 0);
+}
+
+void acendeVermelho() {
+  neopixelWrite(builtin, 255, 0, 0);
 }
 
 void setup() {
@@ -68,8 +76,14 @@ void loop() {
       estadoEstavelSOS = leituraSOS;
 
       if (estadoEstavelSOS == HIGH) {
+
         Serial.println("BOTAO PRESSIONADO");
+
+        alertaSOS = true;
+        inicioAlertaSOS = millis();
+
       } else {
+
         Serial.println("BOTAO NAO PRESSIONADO");
       }
     }
@@ -79,24 +93,35 @@ void loop() {
 
   baixaLuminosidade = sensorValue > LIMIAR_BAIXA_LUZ;
 
-  if (!baixaLuminosidade) {
+  unsigned long agora = millis();
 
-    apagaLed();
-    ledAmareloLigado = false;
+  if (alertaSOS) {
+
+    acendeVermelho();
+
+    if (agora - inicioAlertaSOS >= TEMPO_ALERTA_SOS) {
+      alertaSOS = false;
+    }
 
   } else {
 
-    unsigned long agora = millis();
+    if (!baixaLuminosidade) {
 
-    if (agora - instantePisca >= INTERVALO_PISCA_MS) {
+      apagaLed();
+      ledAmareloLigado = false;
 
-      instantePisca = agora;
-      ledAmareloLigado = !ledAmareloLigado;
+    } else {
 
-      if (ledAmareloLigado) {
-        acendeAmarelo();
-      } else {
-        apagaLed();
+      if (agora - instantePisca >= INTERVALO_PISCA_MS) {
+
+        instantePisca = agora;
+        ledAmareloLigado = !ledAmareloLigado;
+
+        if (ledAmareloLigado) {
+          acendeAmarelo();
+        } else {
+          apagaLed();
+        }
       }
     }
   }
@@ -136,7 +161,7 @@ void loop() {
 
             client.println("<h1>Monitoramento do Sistema</h1>");
 
-            client.print("<h2>Valor Atual: ");
+            client.print("<h2>Valor Atual do Sensor: ");
             client.print(sensorValue);
             client.println("</h2>");
 
@@ -151,6 +176,17 @@ void loop() {
               client.println("<h3 style='color:red;'>BOTAO PRESSIONADO</h3>");
             } else {
               client.println("<h3 style='color:green;'>BOTAO NAO PRESSIONADO</h3>");
+            }
+
+            client.println("<hr>");
+            client.println("<h2>Estado do LED</h2>");
+
+            if (alertaSOS) {
+              client.println("<h3 style='color:red;'>ALERTA SOS ATIVO</h3>");
+            } else if (baixaLuminosidade) {
+              client.println("<h3 style='color:orange;'>MODO BAIXA LUMINOSIDADE</h3>");
+            } else {
+              client.println("<h3>LED DESLIGADO</h3>");
             }
 
             client.println("<p>Atualizacao automatica a cada 1 segundo</p>");
