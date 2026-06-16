@@ -12,22 +12,15 @@ const int SOS_PIN = 3;
 
 const int LIMIAR_BAIXA_LUZ = 3000;
 const unsigned long INTERVALO_PISCA_MS = 2000;
-const unsigned long DEBOUNCE_MS = 200;
-const unsigned long SOS_DURACAO_MS = 3000;
+const unsigned long DEBOUNCE_MS = 50;
 
 bool baixaLuminosidade = false;
 bool ledAmareloLigado = false;
-bool sosAtivo = false;
-
 unsigned long instantePisca = 0;
-unsigned long instanteSosFim = 0;
-unsigned long ultimoDebounceMs = 0;
 
-volatile bool interrupcaoSos = false;
-
-void IRAM_ATTR onSos() {
-  interrupcaoSos = true;
-}
+bool estadoEstavelSOS = LOW;
+bool ultimaLeituraSOS = LOW;
+unsigned long ultimoTempoMudancaSOS = 0;
 
 void apagaLed() {
   neopixelWrite(builtin, 0, 0, 0);
@@ -35,60 +28,6 @@ void apagaLed() {
 
 void acendeAmarelo() {
   neopixelWrite(builtin, 255, 180, 0);
-}
-
-void acendeVermelho() {
-  neopixelWrite(builtin, 255, 0, 0);
-}
-
-void trataSos() {
-
-  if (!interrupcaoSos) {
-    return;
-  }
-
-  unsigned long agora = millis();
-
-  if (agora - ultimoDebounceMs < DEBOUNCE_MS) {
-    return;
-  }
-
-  interrupcaoSos = false;
-  ultimoDebounceMs = agora;
-
-  sosAtivo = true;
-  instanteSosFim = agora + SOS_DURACAO_MS;
-
-  Serial.println("SOS: interrupcao detectada");
-}
-
-void atualizaLed() {
-
-  unsigned long agora = millis();
-
-  if (sosAtivo && agora < instanteSosFim) {
-    acendeVermelho();
-    return;
-  }
-
-  sosAtivo = false;
-
-  if (!baixaLuminosidade) {
-    apagaLed();
-    ledAmareloLigado = false;
-    return;
-  }
-
-  if (agora - instantePisca >= INTERVALO_PISCA_MS) {
-    instantePisca = agora;
-    ledAmareloLigado = !ledAmareloLigado;
-
-    if (ledAmareloLigado) {
-      acendeAmarelo();
-    } else {
-      apagaLed();
-    }
-  }
 }
 
 void setup() {
@@ -99,7 +38,6 @@ void setup() {
   apagaLed();
 
   pinMode(SOS_PIN, INPUT);
-  attachInterrupt(digitalPinToInterrupt(SOS_PIN), onSos, RISING);
 
   WiFi.mode(WIFI_AP);
 
@@ -116,19 +54,52 @@ void setup() {
 
 void loop() {
 
+  bool leituraSOS = digitalRead(SOS_PIN);
+
+  if (leituraSOS != ultimaLeituraSOS) {
+    ultimoTempoMudancaSOS = millis();
+    ultimaLeituraSOS = leituraSOS;
+  }
+
+  if ((millis() - ultimoTempoMudancaSOS) > DEBOUNCE_MS) {
+
+    if (leituraSOS != estadoEstavelSOS) {
+
+      estadoEstavelSOS = leituraSOS;
+
+      if (estadoEstavelSOS == HIGH) {
+        Serial.println("BOTAO PRESSIONADO");
+      } else {
+        Serial.println("BOTAO NAO PRESSIONADO");
+      }
+    }
+  }
+
   int sensorValue = analogRead(analogPin);
 
   baixaLuminosidade = sensorValue > LIMIAR_BAIXA_LUZ;
 
-  trataSos();
+  if (!baixaLuminosidade) {
 
-  Serial.print(sensorValue);
-  Serial.print(" | Baixa luz=");
-  Serial.print(baixaLuminosidade ? "sim" : "nao");
-  Serial.print(" | SOS=");
-  Serial.println(sosAtivo ? "sim" : "nao");
+    apagaLed();
+    ledAmareloLigado = false;
 
-  atualizaLed();
+  } else {
+
+    unsigned long agora = millis();
+
+    if (agora - instantePisca >= INTERVALO_PISCA_MS) {
+
+      instantePisca = agora;
+      ledAmareloLigado = !ledAmareloLigado;
+
+      if (ledAmareloLigado) {
+        acendeAmarelo();
+      } else {
+        apagaLed();
+      }
+    }
+  }
 
   WiFiClient client = server.accept();
 
@@ -137,9 +108,6 @@ void loop() {
     String currentLine = "";
 
     while (client.connected()) {
-
-      trataSos();
-      atualizaLed();
 
       if (client.available()) {
 
@@ -158,31 +126,34 @@ void loop() {
 
             client.println("<head>");
             client.println("<meta charset='UTF-8'>");
-            client.println("<title>Monitoramento Analogico</title>");
-
+            client.println("<title>Monitoramento</title>");
             client.println("<script>");
             client.println("setTimeout(function(){ location.reload(); }, 1000);");
             client.println("</script>");
-
             client.println("</head>");
 
-            client.println("<body style='font-family: Arial; text-align: center; margin-top: 50px;'>");
+            client.println("<body style='font-family:Arial; text-align:center; margin-top:50px;'>");
 
-            client.println("<h1>Monitoramento de Sensor Analogico</h1>");
+            client.println("<h1>Monitoramento do Sistema</h1>");
 
             client.print("<h2>Valor Atual: ");
             client.print(sensorValue);
             client.println("</h2>");
 
-            client.print("<p>Estado: ");
+            client.print("<p>Estado da Luminosidade: ");
             client.print(baixaLuminosidade ? "Baixa luminosidade" : "Luminosidade normal");
             client.println("</p>");
 
-            client.print("<p>SOS: ");
-            client.print(sosAtivo ? "Ativo" : "Inativo");
-            client.println("</p>");
+            client.println("<hr>");
+            client.println("<h2>Botao SOS</h2>");
 
-            client.println("<p>Atualização automática a cada 1 segundo</p>");
+            if (estadoEstavelSOS == HIGH) {
+              client.println("<h3 style='color:red;'>BOTAO PRESSIONADO</h3>");
+            } else {
+              client.println("<h3 style='color:green;'>BOTAO NAO PRESSIONADO</h3>");
+            }
+
+            client.println("<p>Atualizacao automatica a cada 1 segundo</p>");
 
             client.println("</body>");
             client.println("</html>");
@@ -190,14 +161,10 @@ void loop() {
             client.println();
 
             break;
-          }
-
-          else {
+          } else {
             currentLine = "";
           }
-        }
-
-        else if (c != '\r') {
+        } else if (c != '\r') {
           currentLine += c;
         }
       }
@@ -206,5 +173,5 @@ void loop() {
     client.stop();
   }
 
-  delay(100);
+  delay(10);
 }
