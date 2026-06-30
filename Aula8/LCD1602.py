@@ -134,4 +134,48 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         destroy()
 
-https://github.com/Freenove/Freenove_Projects_Kit_for_Raspberry_Pi
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/gpiozero/pins/pi.py", line 411, in pin
+    pin = self.pins[info]
+          ~~~~~~~~~^^^^^^
+KeyError: PinInfo(number=36, name='GPIO16', names=frozenset({'J8:36', 16, 'WPI27', 'GPIO16', 'BOARD36', 'BCM16', '16'}), pull='', row=18, col=2, interfaces=frozenset({'', 'uart', 'gpio', 'dpi', 'spi'}))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/cajote/Downloads/Desafio.py", line 181, in <module>
+    loop()
+    ~~~~^^
+  File "/home/cajote/Downloads/Desafio.py", line 120, in loop
+    tecla = keypad.getKey()
+  File "/home/cajote/Downloads/Keypad.py", line 49, in getKey
+    if(self.getKeys() and self.key[0].stateChanged and (self.key[0].kstate == self.key[0].PRESSED)):
+       ~~~~~~~~~~~~^^
+  File "/home/cajote/Downloads/Keypad.py", line 58, in getKeys
+    self.scanKeys()
+    ~~~~~~~~~~~~~^^
+  File "/home/cajote/Downloads/Keypad.py", line 65, in scanKeys
+    inputs = list(map(lambda pin: InputDevice(pin, pull_up=True), self.rowPins))
+  File "/home/cajote/Downloads/Keypad.py", line 65, in <lambda>
+    inputs = list(map(lambda pin: InputDevice(pin, pull_up=True), self.rowPins))
+                                  ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/gpiozero/devices.py", line 108, in __call__
+    self = super().__call__(*args, **kwargs)
+  File "/usr/lib/python3/dist-packages/gpiozero/input_devices.py", line 79, in __init__
+    super().__init__(pin, pin_factory=pin_factory)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/gpiozero/devices.py", line 553, in __init__
+    pin = self.pin_factory.pin(pin)
+  File "/usr/lib/python3/dist-packages/gpiozero/pins/pi.py", line 413, in pin
+    pin = self.pin_class(self, info)
+  File "/usr/lib/python3/dist-packages/gpiozero/pins/lgpio.py", line 126, in __init__
+    lgpio.gpio_claim_input(
+    ~~~~~~~~~~~~~~~~~~~~~~^
+        self.factory._handle, self._number, lgpio.SET_PULL_NONE)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/lgpio.py", line 755, in gpio_claim_input
+    return _u2i(_lgpio._gpio_claim_input(handle&0xffff, lFlags, gpio))
+  File "/usr/lib/python3/dist-packages/lgpio.py", line 458, in _u2i
+    raise error(error_text(v))
+lgpio.error: 'GPIO busy'
+
