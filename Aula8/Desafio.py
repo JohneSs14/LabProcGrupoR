@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
-from LCD1602 import CharLCD1602
+import time
 import Keypad
-from time import sleep
+from LCD1602 import CharLCD1602
 
 ROWS = 4
 COLS = 4
@@ -18,23 +18,41 @@ rowsPins = [16,20,21,26]
 colsPins = [19,13,6,5]
 
 lcd = CharLCD1602()
+lcd.init_lcd()
+
 keypad = Keypad.Keypad(keys, rowsPins, colsPins, ROWS, COLS)
 keypad.setDebounceTime(50)
 
 numero1 = ""
 numero2 = ""
-operacao = ""
+operacao = None
+
+
+def atualizarDisplay():
+    lcd.clear()
+
+    linha = numero1
+
+    if operacao is not None:
+        linha += operacao
+
+    linha += numero2
+
+    lcd.write(0,0,linha[:16])
+
+    lcd.write(0,1,"#=OK *=CLR")
+
 
 def limpar():
-    global numero1, numero2, operacao
+    global numero1
+    global numero2
+    global operacao
 
     numero1 = ""
     numero2 = ""
-    operacao = ""
+    operacao = None
 
-    lcd.clear()
-    lcd.write(0,0,"Calculadora")
-    lcd.write(0,1,"A:+ B:- C:*")
+    atualizarDisplay()
 
 
 def calcular():
@@ -43,143 +61,95 @@ def calcular():
     global numero2
     global operacao
 
-    if numero1 == "" or operacao == "":
+    if numero1 == "" or numero2 == "" or operacao is None:
         return
 
     a = int(numero1)
-
-    if operacao != "F":
-        if numero2 == "":
-            return
-        b = int(numero2)
+    b = int(numero2)
 
     try:
 
-        if operacao == 'A':
-            resultado = a + b
+        if operacao == "+":
+            r = a+b
 
-        elif operacao == 'B':
-            resultado = a - b
+        elif operacao == "-":
+            r = a-b
 
-        elif operacao == 'C':
-            resultado = a * b
+        elif operacao == "*":
+            r = a*b
 
-        elif operacao == 'D':
+        elif operacao == "/":
 
             if b == 0:
-
                 lcd.clear()
                 lcd.write(0,0,"ERRO")
-                lcd.write(0,1,"DIV POR ZERO")
-
-                sleep(2)
-
+                lcd.write(0,1,"Divisao Zero")
+                time.sleep(2)
                 limpar()
                 return
 
-            resultado = a // b
-
-        elif operacao == 'F':
-
-            resultado = 1
-
-            for i in range(2,a+1):
-                resultado *= i
+            r = a//b
 
         lcd.clear()
+        lcd.write(0,0,"Resultado:")
+        lcd.write(0,1,str(r)[:16])
 
-        lcd.write(0,0,"Resultado")
+        time.sleep(3)
 
-        lcd.write(0,1,str(resultado))
-
-        sleep(4)
-
-        limpar()
-
-    except Exception:
+    except:
 
         lcd.clear()
-
         lcd.write(0,0,"Erro")
 
-        sleep(2)
-
-        limpar()
-
-
-def loop():
-
-    global numero1
-    global numero2
-    global operacao
+        time.sleep(2)
 
     limpar()
 
-    while True:
 
-        tecla = keypad.getKey()
+limpar()
 
-        if tecla == keypad.NULL:
-            continue
+while True:
 
-        ##########################################
+    tecla = keypad.getKey()
 
-        if tecla == '*':
-            limpar()
-            continue
+    if tecla == keypad.NULL:
+        continue
 
-        ##########################################
+    print(tecla)
 
-        if tecla == '#':
-            calcular()
-            continue
+    if tecla == "*":
+        limpar()
+        continue
 
-        ##########################################
+    if tecla == "#":
+        calcular()
+        continue
 
-        if tecla in ['A','B','C','D']:
+    if tecla == "A":
+        operacao = "+"
+        atualizarDisplay()
+        continue
 
-            operacao = tecla
+    if tecla == "B":
+        operacao = "-"
+        atualizarDisplay()
+        continue
 
-            lcd.write(0,1,tecla)
+    if tecla == "C":
+        operacao = "*"
+        atualizarDisplay()
+        continue
 
-            continue
+    if tecla == "D":
+        operacao = "/"
+        atualizarDisplay()
+        continue
 
-        ##########################################
+    if tecla.isdigit():
 
-        if tecla == 'F':
+        if operacao is None:
+            numero1 += tecla
+        else:
+            numero2 += tecla
 
-            operacao = "F"
-
-            continue
-
-        ##########################################
-
-        if tecla.isdigit():
-
-            if operacao == "":
-
-                numero1 += tecla
-
-            else:
-
-                numero2 += tecla
-
-            lcd.clear()
-
-            texto = numero1
-
-            if operacao != "":
-                texto += operacao
-
-            texto += numero2
-
-            lcd.write(0,0,texto)
-
-
-try:
-
-    loop()
-
-except KeyboardInterrupt:
-
-    lcd.clear()
+        atualizarDisplay()
