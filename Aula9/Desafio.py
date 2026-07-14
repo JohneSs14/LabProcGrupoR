@@ -5,8 +5,8 @@ from gpiozero.tones import Tone
 from time import sleep
 import time
 
-servo = AngularServo(17)
-buzzer = TonalBuzzer(23)
+servo = AngularServo(18)
+buzzer = TonalBuzzer(4)
 
 mais = Button(24)
 menos = Button(25)

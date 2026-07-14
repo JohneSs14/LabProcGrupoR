@@ -1,7 +1,7 @@
 from gpiozero import AngularServo
 from time import sleep
 
-SERVO_PIN = 17
+SERVO_PIN = 18
 
 servo = AngularServo(
     SERVO_PIN,

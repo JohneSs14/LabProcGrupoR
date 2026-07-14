@@ -3,8 +3,8 @@ from gpiozero import TonalBuzzer
 from gpiozero.tones import Tone
 from time import sleep
 
-servo = AngularServo(17)
-buzzer = TonalBuzzer(23)
+servo = AngularServo(18)
+buzzer = TonalBuzzer(4)
 
 estado = False
 

@@ -2,7 +2,7 @@ from gpiozero import TonalBuzzer
 from gpiozero.tones import Tone
 from time import sleep
 
-buzzer = TonalBuzzer(23)
+buzzer = TonalBuzzer(4)
 
 while True:
 
