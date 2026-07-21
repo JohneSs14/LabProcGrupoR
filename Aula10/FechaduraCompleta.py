@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 import Keypad
 import RPi.GPIO as GPIO
-from gpiozero import AngularServo, TonalBuzzer, DistanceSensor
+from gpiozero import AngularServo, TonalBuzzer
 from gpiozero.tones import Tone
 from LCD1602 import CharLCD1602
-from time import sleep
+from time import sleep, time
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -26,17 +26,35 @@ keys = ['1','4','7','*',
 rowsPins = [19, 13,  6,  5]
 colsPins  = [16, 20, 21, 26]
 
-# ── Keypad primeiro (RPi.GPIO) ─────────────────────────────────
+# ── Keypad (RPi.GPIO — inicializado primeiro) ──────────────────
 keypad = Keypad.Keypad(keys, rowsPins, colsPins, ROWS, COLS)
 keypad.setDebounceTime(50)
 
-# ── Restante dos componentes (gpiozero) ────────────────────────
+# ── Sensor ultrassonico (RPi.GPIO — sem thread background) ─────
+GPIO.setup(TRIG_PIN, GPIO.OUT)
+GPIO.setup(ECHO_PIN, GPIO.IN)
+
+def medir_distancia():
+    GPIO.output(TRIG_PIN, False)
+    sleep(0.01)
+    GPIO.output(TRIG_PIN, True)
+    sleep(0.00001)
+    GPIO.output(TRIG_PIN, False)
+    t = time()
+    while GPIO.input(ECHO_PIN) == 0:
+        if time() - t > 0.05:
+            return -1
+    inicio = time()
+    while GPIO.input(ECHO_PIN) == 1:
+        if time() - inicio > 0.05:
+            return -1
+    return (time() - inicio) * 34300 / 2
+
+# ── Componentes gpiozero ───────────────────────────────────────
 lcd    = CharLCD1602()
 lcd.init_lcd()
-
 buzzer = TonalBuzzer(BUZZER_PIN)
 servo  = AngularServo(SERVO_PIN)
-sensor = DistanceSensor(echo=ECHO_PIN, trigger=TRIG_PIN, max_distance=3)
 
 # ── Funções auxiliares ─────────────────────────────────────────
 def bip_sucesso():
@@ -74,9 +92,12 @@ def mostrar_mensagem(linha1, linha2='', duracao=2):
     sleep(duracao)
 
 def verificar_sensor():
-    dist = sensor.distance * 100
-    estado = "TRAVADA" if dist < LIMIAR_CM else "ABERTA"
-    print(f"[SENSOR] Distancia: {dist:.1f} cm | Fechadura: {estado}")
+    dist = medir_distancia()
+    if dist < 0:
+        print("[SENSOR] Sem resposta")
+    else:
+        estado = "TRAVADA" if dist < LIMIAR_CM else "ABERTA"
+        print(f"[SENSOR] {dist:.1f} cm | {estado}")
 
 # ── Loop principal ─────────────────────────────────────────────
 travar_fechadura()
@@ -89,7 +110,7 @@ try:
     ciclo = 0
     while True:
         ciclo += 1
-        if ciclo % 20 == 0:
+        if ciclo % 30 == 0:
             verificar_sensor()
 
         key = keypad.getKey()
@@ -125,6 +146,5 @@ except KeyboardInterrupt:
 finally:
     lcd.clear()
     buzzer.close()
-    sensor.close()
     servo.close()
     GPIO.cleanup()
