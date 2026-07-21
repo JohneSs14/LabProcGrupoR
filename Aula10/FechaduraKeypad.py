@@ -7,8 +7,8 @@ keys = ['1','2','3','A',
         '4','5','6','B',
         '7','8','9','C',
         '*','0','#','D']
-rowsPins = [16, 20, 21, 26]
-colsPins  = [19, 13,  6,  5]
+rowsPins = [19, 13,  6,  5]
+colsPins  = [16, 20, 21, 26]
 
 keypad = Keypad.Keypad(keys, rowsPins, colsPins, ROWS, COLS)
 keypad.setDebounceTime(50)
