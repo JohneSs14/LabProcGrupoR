@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-import sys
-sys.path.append('/home/pi/Freenove_Kit/Code/Python_GPIOZero_Code/21_MatrixKeypad')
 import Keypad
 from gpiozero import AngularServo, TonalBuzzer, DistanceSensor
 from gpiozero.tones import Tone
