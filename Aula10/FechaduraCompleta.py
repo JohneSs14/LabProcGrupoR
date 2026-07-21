@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import Keypad
 from gpiozero import AngularServo, TonalBuzzer, DistanceSensor
+from gpiozero.pins.pigpio import PiGPIOFactory
 from gpiozero.tones import Tone
 from LCD1602 import CharLCD1602
 from time import sleep
@@ -9,7 +10,7 @@ warnings.filterwarnings("ignore")
 
 # ── Configurações ──────────────────────────────────────────────
 SENHA_CORRETA  = "1234"
-LIMIAR_CM      = 5.0    # distância que indica fechadura travada
+LIMIAR_CM      = 5.0
 
 TRIG_PIN       = 14
 ECHO_PIN       = 15
@@ -32,9 +33,10 @@ keypad.setDebounceTime(50)
 lcd    = CharLCD1602()
 lcd.init_lcd()
 
-buzzer = TonalBuzzer(BUZZER_PIN)
-servo  = AngularServo(SERVO_PIN)
-sensor = DistanceSensor(echo=ECHO_PIN, trigger=TRIG_PIN, max_distance=3)
+factory = PiGPIOFactory()
+buzzer  = TonalBuzzer(BUZZER_PIN)
+servo   = AngularServo(SERVO_PIN)
+sensor  = DistanceSensor(echo=ECHO_PIN, trigger=TRIG_PIN, max_distance=3, pin_factory=factory)
 
 # ── Funções auxiliares ─────────────────────────────────────────
 def bip_sucesso():
