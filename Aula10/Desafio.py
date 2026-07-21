@@ -1,24 +1,21 @@
 #!/usr/bin/env python3
 # Desafio: Fechadura com protecao contra forca bruta e log de tentativas
 import Keypad
-from gpiozero import AngularServo, TonalBuzzer, DistanceSensor
-from gpiozero.tones import Tone
+import RPi.GPIO as GPIO
 from LCD1602 import CharLCD1602
-from time import sleep
+from time import sleep, time
 from datetime import datetime
-import warnings
-warnings.filterwarnings("ignore")
 
 # ── Configurações ──────────────────────────────────────────────
-SENHA_CORRETA     = "1234"
-MAX_TENTATIVAS    = 3       # bloqueia após N erros consecutivos
-TEMPO_BLOQUEIO    = 10      # segundos bloqueada após exceder tentativas
-LIMIAR_CM         = 5.0
-LOG_FILE          = "tentativas.log"
+SENHA_CORRETA  = "1234"
+MAX_TENTATIVAS = 3
+TEMPO_BLOQUEIO = 10
+LIMIAR_CM      = 5.0
+LOG_FILE       = "tentativas.log"
 
-TRIG_PIN  = 14
-ECHO_PIN  = 15
-SERVO_PIN = 18
+TRIG_PIN   = 14
+ECHO_PIN   = 15
+SERVO_PIN  = 18
 BUZZER_PIN = 4
 
 ROWS = 4
@@ -30,22 +27,75 @@ keys = ['1','4','7','*',
 rowsPins = [19, 13,  6,  5]
 colsPins  = [16, 20, 21, 26]
 
-# ── Inicialização ──────────────────────────────────────────────
+SERVO_TRAVADO = 2.5
+SERVO_ABERTO  = 7.5
+NOTAS = {"C5": 523, "E5": 659, "G5": 784, "A3": 220}
+
+# ── Inicialização GPIO ─────────────────────────────────────────
 keypad = Keypad.Keypad(keys, rowsPins, colsPins, ROWS, COLS)
 keypad.setDebounceTime(50)
 
-lcd    = CharLCD1602()
-lcd.init_lcd()
+GPIO.setup(TRIG_PIN,   GPIO.OUT)
+GPIO.setup(ECHO_PIN,   GPIO.IN)
+GPIO.setup(SERVO_PIN,  GPIO.OUT)
+GPIO.setup(BUZZER_PIN, GPIO.OUT)
 
-buzzer = TonalBuzzer(BUZZER_PIN)
-servo  = AngularServo(SERVO_PIN)
-sensor = DistanceSensor(echo=ECHO_PIN, trigger=TRIG_PIN, max_distance=3)
+servo_pwm  = GPIO.PWM(SERVO_PIN,  50)
+buzzer_pwm = GPIO.PWM(BUZZER_PIN, 440)
+servo_pwm.start(SERVO_TRAVADO)
+buzzer_pwm.start(0)
+
+lcd = CharLCD1602()
+lcd.init_lcd()
 
 # ── Estado global ──────────────────────────────────────────────
 tentativas_erradas = 0
 bloqueada = False
 
-# ── Funções de log ─────────────────────────────────────────────
+# ── Sensor ─────────────────────────────────────────────────────
+def medir_distancia():
+    GPIO.output(TRIG_PIN, False)
+    sleep(0.05)
+    GPIO.output(TRIG_PIN, True)
+    sleep(0.00001)
+    GPIO.output(TRIG_PIN, False)
+    t = time()
+    while GPIO.input(ECHO_PIN) == 0:
+        if time() - t > 0.3:
+            return -1
+    inicio = time()
+    while GPIO.input(ECHO_PIN) == 1:
+        if time() - inicio > 0.3:
+            return -1
+    return (time() - inicio) * 34300 / 2
+
+# ── Servo ──────────────────────────────────────────────────────
+def set_servo(duty):
+    servo_pwm.ChangeDutyCycle(duty)
+    sleep(0.5)
+    servo_pwm.ChangeDutyCycle(0)
+
+# ── Buzzer ─────────────────────────────────────────────────────
+def tocar_nota(nota_str, duracao):
+    freq = NOTAS.get(nota_str, 440)
+    buzzer_pwm.ChangeFrequency(freq)
+    buzzer_pwm.ChangeDutyCycle(50)
+    sleep(duracao)
+    buzzer_pwm.ChangeDutyCycle(0)
+
+def bip_sucesso():
+    for nota in ["C5", "E5", "G5"]:
+        tocar_nota(nota, 0.15)
+
+def bip_erro():
+    tocar_nota("A3", 0.5)
+
+def bip_bloqueio():
+    for _ in range(3):
+        tocar_nota("A3", 0.2)
+        sleep(0.1)
+
+# ── Log ────────────────────────────────────────────────────────
 def registrar_log(evento):
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     linha = f"[{ts}] {evento}"
@@ -53,33 +103,7 @@ def registrar_log(evento):
     with open(LOG_FILE, "a") as f:
         f.write(linha + "\n")
 
-# ── Funções de feedback ────────────────────────────────────────
-def bip_sucesso():
-    for nota in ["C5", "E5", "G5"]:
-        buzzer.play(Tone(nota))
-        sleep(0.15)
-    buzzer.stop()
-
-def bip_erro():
-    buzzer.play(Tone("A3"))
-    sleep(0.5)
-    buzzer.stop()
-
-def bip_bloqueio():
-    for _ in range(3):
-        buzzer.play(Tone("A3"))
-        sleep(0.2)
-        buzzer.stop()
-        sleep(0.1)
-
-def abrir_fechadura():
-    servo.angle = 90
-    sleep(3)
-    servo.angle = 0
-
-def travar_fechadura():
-    servo.angle = 0
-
+# ── LCD ────────────────────────────────────────────────────────
 def atualizar_lcd_entrada(entrada):
     lcd.clear()
     lcd.write(0, 0, 'Digite a senha:')
@@ -92,6 +116,12 @@ def mostrar_mensagem(linha1, linha2='', duracao=2):
     if linha2:
         lcd.write(0, 1, linha2[:16])
     sleep(duracao)
+
+# ── Fechadura ──────────────────────────────────────────────────
+def abrir_fechadura():
+    set_servo(SERVO_ABERTO)
+    sleep(3)
+    set_servo(SERVO_TRAVADO)
 
 def bloquear_sistema():
     global bloqueada, tentativas_erradas
@@ -107,15 +137,28 @@ def bloquear_sistema():
     tentativas_erradas = 0
     registrar_log("Sistema desbloqueado.")
 
+def verificar_sensor():
+    dist = medir_distancia()
+    if dist < 0:
+        registrar_log("[SENSOR] Sem resposta")
+    else:
+        estado = "TRAVADA" if dist < LIMIAR_CM else "ABERTA"
+        registrar_log(f"[SENSOR] {dist:.1f} cm | {estado}")
+
 # ── Loop principal ─────────────────────────────────────────────
-travar_fechadura()
+set_servo(SERVO_TRAVADO)
 entrada = ""
 atualizar_lcd_entrada(entrada)
 registrar_log("Sistema iniciado.")
 print(f"Senha padrao: {SENHA_CORRETA} | Bloqueio apos {MAX_TENTATIVAS} erros\n")
 
 try:
+    ciclo = 0
     while True:
+        ciclo += 1
+        if ciclo % 60 == 0:
+            verificar_sensor()
+
         if bloqueada:
             sleep(0.1)
             continue
@@ -143,7 +186,7 @@ try:
                     bloquear_sistema()
                 else:
                     restantes = MAX_TENTATIVAS - tentativas_erradas
-                    mostrar_mensagem('SENHA INCORRETA', f'Restam {restantes} tentativas', 2)
+                    mostrar_mensagem('SENHA INCORRETA', f'Restam {restantes} tent.', 2)
                     bip_erro()
             entrada = ""
             atualizar_lcd_entrada(entrada)
@@ -156,6 +199,6 @@ except KeyboardInterrupt:
     registrar_log("Sistema encerrado pelo usuario.")
 finally:
     lcd.clear()
-    buzzer.close()
-    sensor.close()
-    servo.close()
+    servo_pwm.stop()
+    buzzer_pwm.stop()
+    GPIO.cleanup()
