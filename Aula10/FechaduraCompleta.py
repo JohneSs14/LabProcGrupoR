@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import Keypad
+import RPi.GPIO as GPIO
 from gpiozero import AngularServo, TonalBuzzer, DistanceSensor
 from gpiozero.tones import Tone
 from LCD1602 import CharLCD1602
@@ -25,16 +26,17 @@ keys = ['1','4','7','*',
 rowsPins = [19, 13,  6,  5]
 colsPins  = [16, 20, 21, 26]
 
-# ── Inicialização dos componentes ──────────────────────────────
+# ── Keypad primeiro (RPi.GPIO) ─────────────────────────────────
 keypad = Keypad.Keypad(keys, rowsPins, colsPins, ROWS, COLS)
 keypad.setDebounceTime(50)
 
+# ── Restante dos componentes (gpiozero) ────────────────────────
 lcd    = CharLCD1602()
 lcd.init_lcd()
 
-buzzer  = TonalBuzzer(BUZZER_PIN)
-servo   = AngularServo(SERVO_PIN)
-sensor  = DistanceSensor(echo=ECHO_PIN, trigger=TRIG_PIN, max_distance=3)
+buzzer = TonalBuzzer(BUZZER_PIN)
+servo  = AngularServo(SERVO_PIN)
+sensor = DistanceSensor(echo=ECHO_PIN, trigger=TRIG_PIN, max_distance=3)
 
 # ── Funções auxiliares ─────────────────────────────────────────
 def bip_sucesso():
@@ -87,7 +89,7 @@ try:
     ciclo = 0
     while True:
         ciclo += 1
-        if ciclo % 10 == 0:
+        if ciclo % 20 == 0:
             verificar_sensor()
 
         key = keypad.getKey()
@@ -125,3 +127,4 @@ finally:
     buzzer.close()
     sensor.close()
     servo.close()
+    GPIO.cleanup()
